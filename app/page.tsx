@@ -20,15 +20,7 @@ type Job = {
   requirements: string;
 };
 
-type MatchResult = {
-  score: number;
-  summary: string;
-  strengths: string[];
-  gaps: string[];
-  interviewQuestions: string[];
-  recruiterNotes: string[];
-  applicationDraft: string;
-};
+type MatchResult = any;
 
 const initialCandidate: Candidate = {
   name: "Jani Kinnunen",
@@ -36,8 +28,7 @@ const initialCandidate: Candidate = {
   location: "Tampere / remote",
   skills:
     "markkinointistrategia, viestintä, sosiaalinen media, konseptointi, copywriting, PR, SEO, SEM, AI, graafinen suunnittelu, videoeditointi",
-  experience:
-    "Liitä tähän CV:n teksti tai tiivistelmä kokemuksestasi.",
+  experience: "Liitä tähän CV:n teksti tai tiivistelmä kokemuksestasi.",
   preferences:
     "Markkinointi- tai viestintäpäällikkö, senior specialist, strateginen mutta käytännönläheinen rooli.",
 };
@@ -51,6 +42,26 @@ const initialJob: Job = {
   requirements:
     "B2B-markkinointi, sisältöstrategia, sosiaalinen media, hakukonenäkyvyys, analytiikka, copywriting, sidosryhmäviestintä",
 };
+
+function getMatchScore(result: any) {
+  return (
+    result?.score ??
+    result?.matchScore ??
+    result?.match_score ??
+    result?.matchscore ??
+    result?.match ??
+    result?.matchPercentage ??
+    result?.match_percentage ??
+    0
+  );
+}
+
+function getItems(result: any, keys: string[]) {
+  for (const key of keys) {
+    if (Array.isArray(result?.[key])) return result[key];
+  }
+  return [];
+}
 
 export default function Home() {
   const [candidate, setCandidate] = useState<Candidate>(initialCandidate);
@@ -109,19 +120,49 @@ ${job.requirements}
         throw new Error(data.error || "Match failed");
       }
 
+      console.log("AI RESULT:", data);
       setResult(data);
     } catch (error) {
       console.error(error);
-
       setError(
-        error instanceof Error
-          ? error.message
-          : "AI-matchaus epäonnistui."
+        error instanceof Error ? error.message : "AI-matchaus epäonnistui."
       );
     } finally {
       setLoading(false);
     }
   }
+
+  const strengths = result
+    ? getItems(result, ["strengths", "vahvuudet"])
+    : [];
+
+  const gaps = result
+    ? getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"])
+    : [];
+
+  const interviewQuestions = result
+    ? getItems(result, [
+        "interviewQuestions",
+        "candidateQuestions",
+        "questionsForCandidate",
+        "haastattelukysymykset",
+      ])
+    : [];
+
+  const recruiterNotes = result
+    ? getItems(result, [
+        "recruiterNotes",
+        "recruiterQuestions",
+        "questionsForRecruiter",
+        "rekrytoijanHuomiot",
+      ])
+    : [];
+
+  const applicationDraft =
+    result?.applicationDraft ??
+    result?.coverLetter ??
+    result?.hakemusluonnos ??
+    "";
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -148,92 +189,33 @@ ${job.requirements}
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <UserRound className="h-5 w-5 text-cyan-300" />
-              <h2 className="text-2xl font-semibold">
-                Työnhakijan profiili
-              </h2>
+              <h2 className="text-2xl font-semibold">Työnhakijan profiili</h2>
             </div>
 
             <div className="space-y-4">
-              <Field
-                label="Nimi"
-                value={candidate.name}
-                onChange={(v) => setCandidate({ ...candidate, name: v })}
-              />
+              <Field label="Nimi" value={candidate.name} onChange={(v) => setCandidate({ ...candidate, name: v })} />
+              <Field label="Titteli" value={candidate.title} onChange={(v) => setCandidate({ ...candidate, title: v })} />
+              <Field label="Sijainti" value={candidate.location} onChange={(v) => setCandidate({ ...candidate, location: v })} />
 
-              <Field
-                label="Titteli"
-                value={candidate.title}
-                onChange={(v) => setCandidate({ ...candidate, title: v })}
-              />
-
-              <Field
-                label="Sijainti"
-                value={candidate.location}
-                onChange={(v) => setCandidate({ ...candidate, location: v })}
-              />
-
-              <Area
-                label="Osaaminen"
-                value={candidate.skills}
-                onChange={(v) => setCandidate({ ...candidate, skills: v })}
-              />
-
-              <Area
-                label="Kokemus / liitä CV:n teksti tähän"
-                value={candidate.experience}
-                onChange={(v) =>
-                  setCandidate({ ...candidate, experience: v })
-                }
-              />
-
-              <Area
-                label="Toiveet"
-                value={candidate.preferences}
-                onChange={(v) =>
-                  setCandidate({ ...candidate, preferences: v })
-                }
-              />
+              <Area label="Osaaminen" value={candidate.skills} onChange={(v) => setCandidate({ ...candidate, skills: v })} />
+              <Area label="Kokemus / liitä CV:n teksti tähän" value={candidate.experience} onChange={(v) => setCandidate({ ...candidate, experience: v })} />
+              <Area label="Toiveet" value={candidate.preferences} onChange={(v) => setCandidate({ ...candidate, preferences: v })} />
             </div>
           </section>
 
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <Briefcase className="h-5 w-5 text-cyan-300" />
-              <h2 className="text-2xl font-semibold">
-                Työpaikkailmoitus
-              </h2>
+              <h2 className="text-2xl font-semibold">Työpaikkailmoitus</h2>
             </div>
 
             <div className="space-y-4">
-              <Field
-                label="Yritys"
-                value={job.company}
-                onChange={(v) => setJob({ ...job, company: v })}
-              />
+              <Field label="Yritys" value={job.company} onChange={(v) => setJob({ ...job, company: v })} />
+              <Field label="Rooli" value={job.role} onChange={(v) => setJob({ ...job, role: v })} />
+              <Field label="Sijainti" value={job.location} onChange={(v) => setJob({ ...job, location: v })} />
 
-              <Field
-                label="Rooli"
-                value={job.role}
-                onChange={(v) => setJob({ ...job, role: v })}
-              />
-
-              <Field
-                label="Sijainti"
-                value={job.location}
-                onChange={(v) => setJob({ ...job, location: v })}
-              />
-
-              <Area
-                label="Kuvaus"
-                value={job.description}
-                onChange={(v) => setJob({ ...job, description: v })}
-              />
-
-              <Area
-                label="Vaatimukset"
-                value={job.requirements}
-                onChange={(v) => setJob({ ...job, requirements: v })}
-              />
+              <Area label="Kuvaus" value={job.description} onChange={(v) => setJob({ ...job, description: v })} />
+              <Area label="Vaatimukset" value={job.requirements} onChange={(v) => setJob({ ...job, requirements: v })} />
             </div>
           </section>
         </div>
@@ -257,42 +239,29 @@ ${job.requirements}
         {result && (
           <section className="mt-10 grid gap-6 lg:grid-cols-2">
             <ResultCard
-              title={`Match score: ${result.score}%`}
-              items={[result.summary]}
+              title={`Match score: ${getMatchScore(result)}%`}
+              items={[result.summary ?? "Ei yhteenvetoa."]}
             />
 
-            <ResultCard title="Vahvuudet" items={result.strengths} />
-
-            <ResultCard title="Täydennettävää" items={result.gaps} />
-
-            <ResultCard
-              title="Haastattelukysymykset"
-              items={result.interviewQuestions}
-            />
-
-            <ResultCard
-              title="Rekrytoijan huomiot"
-              items={result.recruiterNotes}
-            />
+            <ResultCard title="Vahvuudet" items={strengths} />
+            <ResultCard title="Täydennettävää" items={gaps} />
+            <ResultCard title="Haastattelukysymykset" items={interviewQuestions} />
+            <ResultCard title="Rekrytoijan huomiot" items={recruiterNotes} />
 
             <div className="rounded-[2rem] bg-slate-900 p-8">
               <div className="mb-6 flex items-center gap-3">
                 <FileText className="h-5 w-5 text-cyan-300" />
-                <h2 className="text-2xl font-semibold">
-                  Hakemusluonnos
-                </h2>
+                <h2 className="text-2xl font-semibold">Hakemusluonnos</h2>
               </div>
 
               <textarea
                 readOnly
-                value={result.applicationDraft}
+                value={applicationDraft}
                 className="min-h-[350px] w-full rounded-2xl border border-slate-700 bg-slate-950 p-4 text-slate-200"
               />
 
               <button
-                onClick={() =>
-                  navigator.clipboard.writeText(result.applicationDraft)
-                }
+                onClick={() => navigator.clipboard.writeText(applicationDraft)}
                 className="mt-4 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950"
               >
                 Kopioi hakemusluonnos
@@ -317,7 +286,6 @@ function Field({
   return (
     <label className="block">
       <span className="mb-2 block text-sm text-slate-400">{label}</span>
-
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -339,7 +307,6 @@ function Area({
   return (
     <label className="block">
       <span className="mb-2 block text-sm text-slate-400">{label}</span>
-
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -361,14 +328,20 @@ function ResultCard({
       <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
 
       <div className="space-y-3">
-        {items?.map((item, index) => (
-          <div
-            key={index}
-            className="rounded-2xl bg-slate-950 p-4 text-slate-200"
-          >
-            {item}
+        {items && items.length > 0 ? (
+          items.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-2xl bg-slate-950 p-4 text-slate-200"
+            >
+              {item}
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl bg-slate-950 p-4 text-slate-500">
+            Ei tietoja.
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
