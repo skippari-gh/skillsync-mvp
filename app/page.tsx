@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Briefcase, FileText, Sparkles, UserRound } from "lucide-react";
 
 type Candidate = {
@@ -66,19 +66,22 @@ function getItems(result: any, keys: string[]) {
 function formatFullAnalysis(result: any) {
   const score = getMatchScore(result);
 
-  const strengths = getItems(result, ["strengths, vahvuudet"]);
+  const strengths = getItems(result, ["strengths", "vahvuudet"]);
+
   const gaps = getItems(result, [
     "gaps",
     "improvements",
     "weaknesses",
     "puutteet",
   ]);
+
   const questions = getItems(result, [
     "interviewQuestions",
     "candidateQuestions",
     "questionsForCandidate",
     "haastattelukysymykset",
   ]);
+
   const notes = getItems(result, [
     "recruiterNotes",
     "recruiterQuestions",
@@ -121,8 +124,70 @@ export default function Home() {
   const [candidate, setCandidate] = useState<Candidate>(initialCandidate);
   const [job, setJob] = useState<Job>(initialJob);
   const [result, setResult] = useState<MatchResult | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [loaded, setLoaded] = useState(false);
+
+  const [analysisCopied, setAnalysisCopied] = useState(false);
+  const [applicationCopied, setApplicationCopied] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("skillsync-data");
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+
+        if (parsed.candidate) setCandidate(parsed.candidate);
+        if (parsed.job) setJob(parsed.job);
+      } catch {
+        localStorage.removeItem("skillsync-data");
+      }
+    }
+
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    localStorage.setItem(
+      "skillsync-data",
+      JSON.stringify({ candidate, job })
+    );
+  }, [candidate, job, loaded]);
+
+  function clearForm() {
+    setCandidate(initialCandidate);
+    setJob(initialJob);
+    setResult(null);
+    setError("");
+
+    localStorage.removeItem("skillsync-data");
+  }
+
+  function downloadAnalysis() {
+    if (!result) return;
+
+    const text = formatFullAnalysis(result);
+
+    const blob = new Blob([text], {
+      type: "text/plain;charset=utf-8",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "skillsync-analyysi.txt";
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
 
   async function runMatch() {
     try {
@@ -177,18 +242,28 @@ ${job.requirements}
       setResult(data);
     } catch (error) {
       console.error(error);
+
       setError(
-        error instanceof Error ? error.message : "AI-matchaus epäonnistui."
+        error instanceof Error
+          ? error.message
+          : "AI-matchaus epäonnistui."
       );
     } finally {
       setLoading(false);
     }
   }
 
-  const strengths = result ? getItems(result, ["strengths", "vahvuudet"]) : [];
+  const strengths = result
+    ? getItems(result, ["strengths", "vahvuudet"])
+    : [];
 
   const gaps = result
-    ? getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"])
+    ? getItems(result, [
+        "gaps",
+        "improvements",
+        "weaknesses",
+        "puutteet",
+      ])
     : [];
 
   const interviewQuestions = result
@@ -221,6 +296,7 @@ ${job.requirements}
         <section className="rounded-[2rem] bg-slate-900 p-10">
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-cyan-300" />
+
             <span className="text-sm uppercase tracking-[0.2em] text-cyan-300">
               SkillSync Premium
             </span>
@@ -240,36 +316,150 @@ ${job.requirements}
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <UserRound className="h-5 w-5 text-cyan-300" />
-              <h2 className="text-2xl font-semibold">Työnhakijan profiili</h2>
+
+              <h2 className="text-2xl font-semibold">
+                Työnhakijan profiili
+              </h2>
             </div>
 
             <div className="space-y-4">
-              <Field label="Nimi" value={candidate.name} onChange={(v) => setCandidate({ ...candidate, name: v })} />
-              <Field label="Titteli" value={candidate.title} onChange={(v) => setCandidate({ ...candidate, title: v })} />
-              <Field label="Sijainti" value={candidate.location} onChange={(v) => setCandidate({ ...candidate, location: v })} />
-              <Area label="Osaaminen" value={candidate.skills} onChange={(v) => setCandidate({ ...candidate, skills: v })} />
-              <Area label="Kokemus / liitä CV:n teksti tähän" value={candidate.experience} onChange={(v) => setCandidate({ ...candidate, experience: v })} />
-              <Area label="Toiveet" value={candidate.preferences} onChange={(v) => setCandidate({ ...candidate, preferences: v })} />
+              <Field
+                label="Nimi"
+                value={candidate.name}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    name: v,
+                  })
+                }
+              />
+
+              <Field
+                label="Titteli"
+                value={candidate.title}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    title: v,
+                  })
+                }
+              />
+
+              <Field
+                label="Sijainti"
+                value={candidate.location}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    location: v,
+                  })
+                }
+              />
+
+              <Area
+                label="Osaaminen"
+                value={candidate.skills}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    skills: v,
+                  })
+                }
+              />
+
+              <Area
+                label="Kokemus / liitä CV:n teksti tähän"
+                value={candidate.experience}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    experience: v,
+                  })
+                }
+              />
+
+              <Area
+                label="Toiveet"
+                value={candidate.preferences}
+                onChange={(v) =>
+                  setCandidate({
+                    ...candidate,
+                    preferences: v,
+                  })
+                }
+              />
             </div>
           </section>
 
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <Briefcase className="h-5 w-5 text-cyan-300" />
-              <h2 className="text-2xl font-semibold">Työpaikkailmoitus</h2>
+
+              <h2 className="text-2xl font-semibold">
+                Työpaikkailmoitus
+              </h2>
             </div>
 
             <div className="space-y-4">
-              <Field label="Yritys" value={job.company} onChange={(v) => setJob({ ...job, company: v })} />
-              <Field label="Rooli" value={job.role} onChange={(v) => setJob({ ...job, role: v })} />
-              <Field label="Sijainti" value={job.location} onChange={(v) => setJob({ ...job, location: v })} />
-              <Area label="Kuvaus" value={job.description} onChange={(v) => setJob({ ...job, description: v })} />
-              <Area label="Vaatimukset" value={job.requirements} onChange={(v) => setJob({ ...job, requirements: v })} />
+              <Field
+                label="Yritys"
+                value={job.company}
+                onChange={(v) =>
+                  setJob({
+                    ...job,
+                    company: v,
+                  })
+                }
+              />
+
+              <Field
+                label="Rooli"
+                value={job.role}
+                onChange={(v) =>
+                  setJob({
+                    ...job,
+                    role: v,
+                  })
+                }
+              />
+
+              <Field
+                label="Sijainti"
+                value={job.location}
+                onChange={(v) =>
+                  setJob({
+                    ...job,
+                    location: v,
+                  })
+                }
+              />
+
+              <Area
+                label="Kuvaus"
+                value={job.description}
+                onChange={(v) =>
+                  setJob({
+                    ...job,
+                    description: v,
+                  })
+                }
+              />
+
+              <Area
+                label="Vaatimukset"
+                value={job.requirements}
+                onChange={(v) =>
+                  setJob({
+                    ...job,
+                    requirements: v,
+                  })
+                }
+              />
             </div>
           </section>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
           <button
             onClick={runMatch}
             disabled={loading}
@@ -278,8 +468,15 @@ ${job.requirements}
             {loading ? "Analysoidaan..." : "Tee AI-matchaus"}
           </button>
 
+          <button
+            onClick={clearForm}
+            className="rounded-3xl border border-slate-700 px-6 py-4 text-sm font-semibold text-slate-300 transition hover:bg-slate-900"
+          >
+            Tyhjennä lomake
+          </button>
+
           {error && (
-            <div className="mt-4 rounded-2xl bg-rose-500/10 p-4 text-rose-300">
+            <div className="rounded-2xl bg-rose-500/10 p-4 text-rose-300 md:col-span-2">
               {error}
             </div>
           )}
@@ -297,25 +494,62 @@ ${job.requirements}
                 Vie analyysi talteen
               </h2>
 
-              <button
-                onClick={() =>
-                  navigator.clipboard.writeText(formatFullAnalysis(result))
-                }
-                className="rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950"
-              >
-                Kopioi koko analyysi
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      formatFullAnalysis(result)
+                    );
+
+                    setAnalysisCopied(true);
+
+                    setTimeout(() => {
+                      setAnalysisCopied(false);
+                    }, 2000);
+                  }}
+                  className="rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950"
+                >
+                  {analysisCopied
+                    ? "Kopioitu!"
+                    : "Kopioi koko analyysi"}
+                </button>
+
+                <button
+                  onClick={downloadAnalysis}
+                  className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-slate-950"
+                >
+                  Lataa analyysi .txt
+                </button>
+              </div>
             </div>
 
-            <ResultCard title="Vahvuudet" items={strengths} />
-            <ResultCard title="Täydennettävää" items={gaps} />
-            <ResultCard title="Haastattelukysymykset" items={interviewQuestions} />
-            <ResultCard title="Rekrytoijan huomiot" items={recruiterNotes} />
+            <ResultCard
+              title="Vahvuudet"
+              items={strengths}
+            />
+
+            <ResultCard
+              title="Täydennettävää"
+              items={gaps}
+            />
+
+            <ResultCard
+              title="Haastattelukysymykset"
+              items={interviewQuestions}
+            />
+
+            <ResultCard
+              title="Rekrytoijan huomiot"
+              items={recruiterNotes}
+            />
 
             <div className="rounded-[2rem] bg-slate-900 p-8">
               <div className="mb-6 flex items-center gap-3">
                 <FileText className="h-5 w-5 text-cyan-300" />
-                <h2 className="text-2xl font-semibold">Hakemusluonnos</h2>
+
+                <h2 className="text-2xl font-semibold">
+                  Hakemusluonnos
+                </h2>
               </div>
 
               <textarea
@@ -325,10 +559,22 @@ ${job.requirements}
               />
 
               <button
-                onClick={() => navigator.clipboard.writeText(applicationDraft)}
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    applicationDraft
+                  );
+
+                  setApplicationCopied(true);
+
+                  setTimeout(() => {
+                    setApplicationCopied(false);
+                  }, 2000);
+                }}
                 className="mt-4 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950"
               >
-                Kopioi hakemusluonnos
+                {applicationCopied
+                  ? "Kopioitu!"
+                  : "Kopioi hakemusluonnos"}
               </button>
             </div>
           </section>
@@ -349,7 +595,10 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm text-slate-400">{label}</span>
+      <span className="mb-2 block text-sm text-slate-400">
+        {label}
+      </span>
+
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -370,7 +619,10 @@ function Area({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm text-slate-400">{label}</span>
+      <span className="mb-2 block text-sm text-slate-400">
+        {label}
+      </span>
+
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -389,7 +641,9 @@ function ResultCard({
 }) {
   return (
     <div className="rounded-[2rem] bg-slate-900 p-8">
-      <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
+      <h2 className="mb-5 text-2xl font-semibold">
+        {title}
+      </h2>
 
       <div className="space-y-3">
         {items && items.length > 0 ? (
