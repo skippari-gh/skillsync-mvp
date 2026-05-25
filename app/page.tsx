@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Briefcase, FileText, Sparkles, UserRound } from "lucide-react";
 
 type UserRole = "candidate" | "recruiter";
+type MatchResult = any;
 
 type Candidate = {
   name: string;
@@ -21,8 +22,6 @@ type Job = {
   description: string;
   requirements: string;
 };
-
-type MatchResult = any;
 
 const initialCandidate: Candidate = {
   name: "Jani Kinnunen",
@@ -68,14 +67,38 @@ function getItems(result: any, keys: string[]) {
 function formatFullAnalysis(result: any) {
   const score = getMatchScore(result);
 
+  const scoreReasoning = getItems(result, [
+    "scoreReasoning",
+    "score_reasoning",
+    "scoreReasons",
+    "scorePerustelu",
+    "scorePerustelut",
+  ]);
+
+  const nextSteps = getItems(result, [
+    "nextSteps",
+    "next_steps",
+    "seuraavatToimenpiteet",
+    "seuraavat_toimenpiteet",
+    "toimenpiteet",
+  ]);
+
   const strengths = getItems(result, ["strengths", "vahvuudet"]);
-  const gaps = getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"]);
+
+  const gaps = getItems(result, [
+    "gaps",
+    "improvements",
+    "weaknesses",
+    "puutteet",
+  ]);
+
   const questions = getItems(result, [
     "interviewQuestions",
     "candidateQuestions",
     "questionsForCandidate",
     "haastattelukysymykset",
   ]);
+
   const notes = getItems(result, [
     "recruiterNotes",
     "recruiterQuestions",
@@ -96,6 +119,12 @@ Match score: ${score} %
 
 Yhteenveto:
 ${result?.summary ?? ""}
+
+Miksi tämä score?
+${scoreReasoning.map((item: string) => `- ${item}`).join("\n")}
+
+Seuraavat toimenpiteet:
+${nextSteps.map((item: string) => `- ${item}`).join("\n")}
 
 Vahvuudet:
 ${strengths.map((item: string) => `- ${item}`).join("\n")}
@@ -119,9 +148,11 @@ export default function Home() {
   const [candidate, setCandidate] = useState<Candidate>(initialCandidate);
   const [job, setJob] = useState<Job>(initialJob);
   const [result, setResult] = useState<MatchResult | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
+
   const [analysisCopied, setAnalysisCopied] = useState(false);
   const [applicationCopied, setApplicationCopied] = useState(false);
 
@@ -131,6 +162,7 @@ export default function Home() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+
         if (parsed.userRole) setUserRole(parsed.userRole);
         if (parsed.candidate) setCandidate(parsed.candidate);
         if (parsed.job) setJob(parsed.job);
@@ -164,7 +196,10 @@ export default function Home() {
     if (!result) return;
 
     const text = formatFullAnalysis(result);
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([text], {
+      type: "text/plain;charset=utf-8",
+    });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
@@ -232,17 +267,46 @@ ${job.requirements}
     } catch (error) {
       console.error(error);
       setError(
-        error instanceof Error ? error.message : "AI-matchaus epäonnistui."
+        error instanceof Error
+          ? error.message
+          : "AI-matchaus epäonnistui."
       );
     } finally {
       setLoading(false);
     }
   }
 
-  const strengths = result ? getItems(result, ["strengths", "vahvuudet"]) : [];
+  const scoreReasoning = result
+    ? getItems(result, [
+        "scoreReasoning",
+        "score_reasoning",
+        "scoreReasons",
+        "scorePerustelu",
+        "scorePerustelut",
+      ])
+    : [];
+
+  const nextSteps = result
+    ? getItems(result, [
+        "nextSteps",
+        "next_steps",
+        "seuraavatToimenpiteet",
+        "seuraavat_toimenpiteet",
+        "toimenpiteet",
+      ])
+    : [];
+
+  const strengths = result
+    ? getItems(result, ["strengths", "vahvuudet"])
+    : [];
 
   const gaps = result
-    ? getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"])
+    ? getItems(result, [
+        "gaps",
+        "improvements",
+        "weaknesses",
+        "puutteet",
+      ])
     : [];
 
   const interviewQuestions = result
@@ -334,43 +398,12 @@ ${job.requirements}
             </div>
 
             <div className="space-y-4">
-              <Field
-                label="Nimi"
-                value={candidate.name}
-                onChange={(v) => setCandidate({ ...candidate, name: v })}
-              />
-
-              <Field
-                label="Titteli"
-                value={candidate.title}
-                onChange={(v) => setCandidate({ ...candidate, title: v })}
-              />
-
-              <Field
-                label="Sijainti"
-                value={candidate.location}
-                onChange={(v) => setCandidate({ ...candidate, location: v })}
-              />
-
-              <Area
-                label="Osaaminen"
-                value={candidate.skills}
-                onChange={(v) => setCandidate({ ...candidate, skills: v })}
-              />
-
-              <Area
-                label="Kokemus / liitä CV:n teksti tähän"
-                value={candidate.experience}
-                onChange={(v) => setCandidate({ ...candidate, experience: v })}
-              />
-
-              <Area
-                label="Toiveet"
-                value={candidate.preferences}
-                onChange={(v) =>
-                  setCandidate({ ...candidate, preferences: v })
-                }
-              />
+              <Field label="Nimi" value={candidate.name} onChange={(v) => setCandidate({ ...candidate, name: v })} />
+              <Field label="Titteli" value={candidate.title} onChange={(v) => setCandidate({ ...candidate, title: v })} />
+              <Field label="Sijainti" value={candidate.location} onChange={(v) => setCandidate({ ...candidate, location: v })} />
+              <Area label="Osaaminen" value={candidate.skills} onChange={(v) => setCandidate({ ...candidate, skills: v })} />
+              <Area label="Kokemus / liitä CV:n teksti tähän" value={candidate.experience} onChange={(v) => setCandidate({ ...candidate, experience: v })} />
+              <Area label="Toiveet" value={candidate.preferences} onChange={(v) => setCandidate({ ...candidate, preferences: v })} />
             </div>
           </section>
 
@@ -382,35 +415,11 @@ ${job.requirements}
             </div>
 
             <div className="space-y-4">
-              <Field
-                label="Yritys"
-                value={job.company}
-                onChange={(v) => setJob({ ...job, company: v })}
-              />
-
-              <Field
-                label="Rooli"
-                value={job.role}
-                onChange={(v) => setJob({ ...job, role: v })}
-              />
-
-              <Field
-                label="Sijainti"
-                value={job.location}
-                onChange={(v) => setJob({ ...job, location: v })}
-              />
-
-              <Area
-                label="Kuvaus"
-                value={job.description}
-                onChange={(v) => setJob({ ...job, description: v })}
-              />
-
-              <Area
-                label="Vaatimukset"
-                value={job.requirements}
-                onChange={(v) => setJob({ ...job, requirements: v })}
-              />
+              <Field label="Yritys" value={job.company} onChange={(v) => setJob({ ...job, company: v })} />
+              <Field label="Rooli" value={job.role} onChange={(v) => setJob({ ...job, role: v })} />
+              <Field label="Sijainti" value={job.location} onChange={(v) => setJob({ ...job, location: v })} />
+              <Area label="Kuvaus" value={job.description} onChange={(v) => setJob({ ...job, description: v })} />
+              <Area label="Vaatimukset" value={job.requirements} onChange={(v) => setJob({ ...job, requirements: v })} />
             </div>
           </section>
         </div>
@@ -448,6 +457,10 @@ ${job.requirements}
               title={`Match score: ${getMatchScore(result)}%`}
               items={[result.summary ?? "Ei yhteenvetoa."]}
             />
+
+            <ResultCard title="Miksi tämä score?" items={scoreReasoning} />
+
+            <ResultCard title="Seuraavat toimenpiteet" items={nextSteps} />
 
             <div className="rounded-[2rem] bg-slate-900 p-8">
               <h2 className="mb-4 text-2xl font-semibold">

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
-      temperature: 0.35,
+      temperature: 0.4,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -25,24 +25,32 @@ export async function POST(req: Request) {
           content: `
 Olet kokenut suomalainen rekrytoinnin, työnhaun ja osaamisen arvioinnin asiantuntija.
 
-Arvioit hakijan realistisesti suhteessa työpaikkailmoitukseen.
-
-Jos käyttäjän rooli palvelussa on "Työnhakija", painota:
-- miten hakija voi parantaa profiiliaan
-- miten kokemus kannattaa sanoittaa paremmin
-- miten hakemusluonnoksesta tulee osuvampi
-- mihin haastattelussa kannattaa valmistautua
-- mitä puutteita voi paikata viestinnällä
-
-Jos käyttäjän rooli palvelussa on "Rekrytoija", painota:
-- hakijan sopivuutta tehtävään
-- mahdollisia riskejä
-- puuttuvaa näyttöä
-- hyödyllisiä haastattelukysymyksiä
-- rekrytointisuositusta
-
-Älä mielistele. Ole realistinen, tarkka ja hyödyllinen.
 Palauta aina vain validia JSONia suomeksi.
+
+JSON-rakenne:
+{
+  "score": number,
+  "summary": "string",
+  "scoreReasoning": ["string", "string", "string"],
+  "nextSteps": ["string", "string", "string"],
+  "strengths": ["string", "string", "string"],
+  "gaps": ["string", "string", "string"],
+  "interviewQuestions": ["string", "string", "string"],
+  "recruiterNotes": ["string", "string", "string"],
+  "applicationDraft": "string"
+}
+
+scoreReasoning:
+- mikä nostaa scorea
+- mikä laskee scorea
+- mikä selittää kokonaisarvion
+
+nextSteps:
+- anna 3 konkreettista seuraavaa toimenpidettä
+- jos käyttäjä on työnhakija, neuvo miten profiilia, hakemusta tai haastatteluvalmistautumista kannattaa parantaa
+- jos käyttäjä on rekrytoija, neuvo mitä kannattaa varmistaa ennen päätöstä
+
+Älä jätä mitään listaa tyhjäksi.
 `,
         },
         {
@@ -55,53 +63,21 @@ ${profile}
 
 TYÖPAIKKAILMOITUS:
 ${jobDescription}
-
-Score rules:
-- 90-100 = erittäin vahva match
-- 70-89 = hyvä match
-- 50-69 = kohtalainen match
-- alle 50 = heikko match
-- Älä anna matalaa scorea kokeneelle hakijalle, jos suurin osa vaatimuksista täyttyy.
-- Score ei saa olla ristiriidassa yhteenvedon kanssa.
-- Jos osaaminen on vahvaa mutta ilmoitus ei vaadi kaikkea hakijan osaamista, älä rankaise siitä liikaa.
-- Jos hakija on mahdollisesti liian seniori, mainitse se riskinä mutta älä automaattisesti laske scorea voimakkaasti.
-
-Palauta VAIN validi JSON tällä rakenteella:
-
-{
-  "score": number,
-  "summary": "lyhyt kokonaisarvio",
-  "strengths": [
-    "vahvuus 1",
-    "vahvuus 2",
-    "vahvuus 3"
-  ],
-  "gaps": [
-    "täydennettävä asia 1",
-    "täydennettävä asia 2",
-    "täydennettävä asia 3"
-  ],
-  "interviewQuestions": [
-    "haastattelukysymys 1",
-    "haastattelukysymys 2",
-    "haastattelukysymys 3"
-  ],
-  "recruiterNotes": [
-    "rekrytoijan huomio 1",
-    "rekrytoijan huomio 2",
-    "rekrytoijan huomio 3"
-  ],
-  "applicationDraft": "lyhyt mutta vakuuttava hakemusluonnos"
-}
 `,
         },
       ],
     });
 
-    const content = completion.choices[0].message.content || "{}";
-    const parsed = JSON.parse(content);
+    const content = completion.choices[0].message.content;
 
-    return Response.json(parsed);
+    if (!content) {
+      return Response.json(
+        { error: "No response from AI" },
+        { status: 500 }
+      );
+    }
+
+    return Response.json(JSON.parse(content));
   } catch (error) {
     console.error(error);
 
