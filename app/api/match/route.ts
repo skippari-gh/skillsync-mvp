@@ -22,8 +22,28 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content:
-            "Olet kokenut rekrytoija. Arvioit hakijan realistisesti suhteessa tehtävään. Palauta aina vain validia JSONia suomeksi.",
+          content: `
+Olet kokenut suomalainen rekrytoinnin, työnhaun ja osaamisen arvioinnin asiantuntija.
+
+Arvioit hakijan realistisesti suhteessa työpaikkailmoitukseen.
+
+Jos käyttäjän rooli palvelussa on "Työnhakija", painota:
+- miten hakija voi parantaa profiiliaan
+- miten kokemus kannattaa sanoittaa paremmin
+- miten hakemusluonnoksesta tulee osuvampi
+- mihin haastattelussa kannattaa valmistautua
+- mitä puutteita voi paikata viestinnällä
+
+Jos käyttäjän rooli palvelussa on "Rekrytoija", painota:
+- hakijan sopivuutta tehtävään
+- mahdollisia riskejä
+- puuttuvaa näyttöä
+- hyödyllisiä haastattelukysymyksiä
+- rekrytointisuositusta
+
+Älä mielistele. Ole realistinen, tarkka ja hyödyllinen.
+Palauta aina vain validia JSONia suomeksi.
+`,
         },
         {
           role: "user",
@@ -43,31 +63,33 @@ Score rules:
 - alle 50 = heikko match
 - Älä anna matalaa scorea kokeneelle hakijalle, jos suurin osa vaatimuksista täyttyy.
 - Score ei saa olla ristiriidassa yhteenvedon kanssa.
+- Jos osaaminen on vahvaa mutta ilmoitus ei vaadi kaikkea hakijan osaamista, älä rankaise siitä liikaa.
+- Jos hakija on mahdollisesti liian seniori, mainitse se riskinä mutta älä automaattisesti laske scorea voimakkaasti.
 
 Palauta VAIN validi JSON tällä rakenteella:
 
 {
-  "matchScore": number,
+  "score": number,
   "summary": "lyhyt kokonaisarvio",
   "strengths": [
     "vahvuus 1",
     "vahvuus 2",
     "vahvuus 3"
   ],
-  "improvements": [
-    "kehityskohde 1",
-    "kehityskohde 2",
-    "kehityskohde 3"
+  "gaps": [
+    "täydennettävä asia 1",
+    "täydennettävä asia 2",
+    "täydennettävä asia 3"
   ],
-  "candidateQuestions": [
-    "kysymys hakijalle 1",
-    "kysymys hakijalle 2",
-    "kysymys hakijalle 3"
+  "interviewQuestions": [
+    "haastattelukysymys 1",
+    "haastattelukysymys 2",
+    "haastattelukysymys 3"
   ],
-  "recruiterQuestions": [
-    "kysymys rekrytoijalle 1",
-    "kysymys rekrytoijalle 2",
-    "kysymys rekrytoijalle 3"
+  "recruiterNotes": [
+    "rekrytoijan huomio 1",
+    "rekrytoijan huomio 2",
+    "rekrytoijan huomio 3"
   ],
   "applicationDraft": "lyhyt mutta vakuuttava hakemusluonnos"
 }
@@ -82,6 +104,10 @@ Palauta VAIN validi JSON tällä rakenteella:
     return Response.json(parsed);
   } catch (error) {
     console.error(error);
-    return Response.json({ error: "Analysis failed" }, { status: 500 });
+
+    return Response.json(
+      { error: "Analysis failed" },
+      { status: 500 }
+    );
   }
 }
