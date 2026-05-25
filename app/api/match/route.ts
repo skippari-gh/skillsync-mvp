@@ -4,6 +4,29 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+function normalizeScore(parsed: any) {
+  const summary = String(parsed.summary ?? "").toLowerCase();
+  const score = Number(parsed.score);
+
+  const soundsVeryPositive =
+    summary.includes("vastaa hyvin") ||
+    summary.includes("vahva") ||
+    summary.includes("erittäin kokenut") ||
+    summary.includes("sopii hyvin") ||
+    summary.includes("hyvä match") ||
+    summary.includes("laaja osaaminen");
+
+  if (soundsVeryPositive && score < 70) {
+    parsed.score = 85;
+  }
+
+  if (!Number.isFinite(score)) {
+    parsed.score = 0;
+  }
+
+  return parsed;
+}
+
 export async function POST(req: Request) {
   try {
     const { profile, jobDescription } = await req.json();
@@ -17,7 +40,7 @@ export async function POST(req: Request) {
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
-      temperature: 0.4,
+      temperature: 0.2,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -40,15 +63,21 @@ JSON-rakenne:
   "applicationDraft": "string"
 }
 
-scoreReasoning:
-- mikä nostaa scorea
-- mikä laskee scorea
-- mikä selittää kokonaisarvion
+Score rules:
+- 90-100 = erittäin vahva match
+- 75-89 = hyvä match
+- 60-74 = kohtalainen match
+- 40-59 = heikko match
+- 0-39 = erittäin heikko match
 
-nextSteps:
-- anna 3 konkreettista seuraavaa toimenpidettä
-- jos käyttäjä on työnhakija, neuvo miten profiilia, hakemusta tai haastatteluvalmistautumista kannattaa parantaa
-- jos käyttäjä on rekrytoija, neuvo mitä kannattaa varmistaa ennen päätöstä
+ERITTÄIN TÄRKEÄÄ:
+- Score ei saa olla ristiriidassa yhteenvedon kanssa.
+- Jos yhteenveto sanoo, että hakija vastaa hyvin vaatimuksia, score ei voi olla alle 75.
+- Jos hakijalla on pitkä relevantti kokemus ja suuri osa vaatimuksista täyttyy, score on yleensä 80-90.
+- Älä anna satunnaisen matalaa scorea.
+- Älä rankaise hakijaa siitä, että hän on kokenut, ellei rooli selvästi ole junioritasoinen.
+- Jos hakija voi olla liian seniori, mainitse se riskinä mutta älä pudota scorea rajusti.
+- Score pitää perustella konkreettisesti scoreReasoning-kentässä.
 
 Älä jätä mitään listaa tyhjäksi.
 `,
@@ -77,7 +106,9 @@ ${jobDescription}
       );
     }
 
-    return Response.json(JSON.parse(content));
+    const parsed = normalizeScore(JSON.parse(content));
+
+    return Response.json(parsed);
   } catch (error) {
     console.error(error);
 

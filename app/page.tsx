@@ -45,7 +45,7 @@ const initialJob: Job = {
 };
 
 function getMatchScore(result: any) {
-  return (
+  const raw =
     result?.score ??
     result?.matchScore ??
     result?.match_score ??
@@ -53,8 +53,24 @@ function getMatchScore(result: any) {
     result?.match ??
     result?.matchPercentage ??
     result?.match_percentage ??
-    0
-  );
+    0;
+
+  const value =
+    typeof raw === "string"
+      ? Number(raw.replace("%", "").replace("/10", "").trim())
+      : Number(raw);
+
+  if (!Number.isFinite(value)) return 0;
+
+  if (typeof raw === "string" && raw.includes("/10")) {
+    return Math.round(value * 10);
+  }
+
+  if (value > 0 && value <= 10) {
+    return Math.round(value * 10);
+  }
+
+  return Math.round(value);
 }
 
 function getItems(result: any, keys: string[]) {
@@ -84,13 +100,7 @@ function formatFullAnalysis(result: any) {
   ]);
 
   const strengths = getItems(result, ["strengths", "vahvuudet"]);
-
-  const gaps = getItems(result, [
-    "gaps",
-    "improvements",
-    "weaknesses",
-    "puutteet",
-  ]);
+  const gaps = getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"]);
 
   const questions = getItems(result, [
     "interviewQuestions",
@@ -162,7 +172,6 @@ export default function Home() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-
         if (parsed.userRole) setUserRole(parsed.userRole);
         if (parsed.candidate) setCandidate(parsed.candidate);
         if (parsed.job) setJob(parsed.job);
@@ -196,10 +205,7 @@ export default function Home() {
     if (!result) return;
 
     const text = formatFullAnalysis(result);
-    const blob = new Blob([text], {
-      type: "text/plain;charset=utf-8",
-    });
-
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
@@ -248,28 +254,19 @@ ${job.requirements}
 
       const response = await fetch("/api/match", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          profile,
-          jobDescription,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile, jobDescription }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Match failed");
-      }
+      if (!response.ok) throw new Error(data.error || "Match failed");
 
       setResult(data);
     } catch (error) {
       console.error(error);
       setError(
-        error instanceof Error
-          ? error.message
-          : "AI-matchaus epäonnistui."
+        error instanceof Error ? error.message : "AI-matchaus epäonnistui."
       );
     } finally {
       setLoading(false);
@@ -296,17 +293,9 @@ ${job.requirements}
       ])
     : [];
 
-  const strengths = result
-    ? getItems(result, ["strengths", "vahvuudet"])
-    : [];
-
+  const strengths = result ? getItems(result, ["strengths", "vahvuudet"]) : [];
   const gaps = result
-    ? getItems(result, [
-        "gaps",
-        "improvements",
-        "weaknesses",
-        "puutteet",
-      ])
+    ? getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"])
     : [];
 
   const interviewQuestions = result
@@ -339,7 +328,6 @@ ${job.requirements}
         <section className="rounded-[2rem] bg-slate-900 p-10">
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-cyan-300" />
-
             <span className="text-sm uppercase tracking-[0.2em] text-cyan-300">
               SkillSync Premium
             </span>
@@ -389,11 +377,8 @@ ${job.requirements}
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <UserRound className="h-5 w-5 text-cyan-300" />
-
               <h2 className="text-2xl font-semibold">
-                {userRole === "candidate"
-                  ? "Oma profiili"
-                  : "Hakijan profiili"}
+                {userRole === "candidate" ? "Oma profiili" : "Hakijan profiili"}
               </h2>
             </div>
 
@@ -410,7 +395,6 @@ ${job.requirements}
           <section className="rounded-[2rem] bg-slate-900 p-8">
             <div className="mb-6 flex items-center gap-3">
               <Briefcase className="h-5 w-5 text-cyan-300" />
-
               <h2 className="text-2xl font-semibold">Työpaikkailmoitus</h2>
             </div>
 
@@ -459,7 +443,6 @@ ${job.requirements}
             />
 
             <ResultCard title="Miksi tämä score?" items={scoreReasoning} />
-
             <ResultCard title="Seuraavat toimenpiteet" items={nextSteps} />
 
             <div className="rounded-[2rem] bg-slate-900 p-8">
@@ -512,7 +495,6 @@ ${job.requirements}
             <div className="rounded-[2rem] bg-slate-900 p-8">
               <div className="mb-6 flex items-center gap-3">
                 <FileText className="h-5 w-5 text-cyan-300" />
-
                 <h2 className="text-2xl font-semibold">Hakemusluonnos</h2>
               </div>
 
@@ -552,7 +534,6 @@ function Field({
   return (
     <label className="block">
       <span className="mb-2 block text-sm text-slate-400">{label}</span>
-
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -574,7 +555,6 @@ function Area({
   return (
     <label className="block">
       <span className="mb-2 block text-sm text-slate-400">{label}</span>
-
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
