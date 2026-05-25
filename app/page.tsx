@@ -63,6 +63,60 @@ function getItems(result: any, keys: string[]) {
   return [];
 }
 
+function formatFullAnalysis(result: any) {
+  const score = getMatchScore(result);
+
+  const strengths = getItems(result, ["strengths, vahvuudet"]);
+  const gaps = getItems(result, [
+    "gaps",
+    "improvements",
+    "weaknesses",
+    "puutteet",
+  ]);
+  const questions = getItems(result, [
+    "interviewQuestions",
+    "candidateQuestions",
+    "questionsForCandidate",
+    "haastattelukysymykset",
+  ]);
+  const notes = getItems(result, [
+    "recruiterNotes",
+    "recruiterQuestions",
+    "questionsForRecruiter",
+    "rekrytoijanHuomiot",
+  ]);
+
+  const applicationDraft =
+    result?.applicationDraft ??
+    result?.coverLetter ??
+    result?.hakemusluonnos ??
+    "";
+
+  return `
+SkillSync-analyysi
+
+Match score: ${score} %
+
+Yhteenveto:
+${result?.summary ?? ""}
+
+Vahvuudet:
+${strengths.map((item: string) => `- ${item}`).join("\n")}
+
+Täydennettävää:
+${gaps.map((item: string) => `- ${item}`).join("\n")}
+
+Haastattelukysymykset:
+${questions.map((item: string) => `- ${item}`).join("\n")}
+
+Rekrytoijan huomiot:
+${notes.map((item: string) => `- ${item}`).join("\n")}
+
+Hakemusluonnos:
+${applicationDraft}
+`.trim();
+}
+
 export default function Home() {
   const [candidate, setCandidate] = useState<Candidate>(initialCandidate);
   const [job, setJob] = useState<Job>(initialJob);
@@ -120,7 +174,6 @@ ${job.requirements}
         throw new Error(data.error || "Match failed");
       }
 
-      console.log("AI RESULT:", data);
       setResult(data);
     } catch (error) {
       console.error(error);
@@ -132,9 +185,7 @@ ${job.requirements}
     }
   }
 
-  const strengths = result
-    ? getItems(result, ["strengths", "vahvuudet"])
-    : [];
+  const strengths = result ? getItems(result, ["strengths", "vahvuudet"]) : [];
 
   const gaps = result
     ? getItems(result, ["gaps", "improvements", "weaknesses", "puutteet"])
@@ -196,7 +247,6 @@ ${job.requirements}
               <Field label="Nimi" value={candidate.name} onChange={(v) => setCandidate({ ...candidate, name: v })} />
               <Field label="Titteli" value={candidate.title} onChange={(v) => setCandidate({ ...candidate, title: v })} />
               <Field label="Sijainti" value={candidate.location} onChange={(v) => setCandidate({ ...candidate, location: v })} />
-
               <Area label="Osaaminen" value={candidate.skills} onChange={(v) => setCandidate({ ...candidate, skills: v })} />
               <Area label="Kokemus / liitä CV:n teksti tähän" value={candidate.experience} onChange={(v) => setCandidate({ ...candidate, experience: v })} />
               <Area label="Toiveet" value={candidate.preferences} onChange={(v) => setCandidate({ ...candidate, preferences: v })} />
@@ -213,7 +263,6 @@ ${job.requirements}
               <Field label="Yritys" value={job.company} onChange={(v) => setJob({ ...job, company: v })} />
               <Field label="Rooli" value={job.role} onChange={(v) => setJob({ ...job, role: v })} />
               <Field label="Sijainti" value={job.location} onChange={(v) => setJob({ ...job, location: v })} />
-
               <Area label="Kuvaus" value={job.description} onChange={(v) => setJob({ ...job, description: v })} />
               <Area label="Vaatimukset" value={job.requirements} onChange={(v) => setJob({ ...job, requirements: v })} />
             </div>
@@ -242,6 +291,21 @@ ${job.requirements}
               title={`Match score: ${getMatchScore(result)}%`}
               items={[result.summary ?? "Ei yhteenvetoa."]}
             />
+
+            <div className="rounded-[2rem] bg-slate-900 p-8">
+              <h2 className="mb-4 text-2xl font-semibold">
+                Vie analyysi talteen
+              </h2>
+
+              <button
+                onClick={() =>
+                  navigator.clipboard.writeText(formatFullAnalysis(result))
+                }
+                className="rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950"
+              >
+                Kopioi koko analyysi
+              </button>
+            </div>
 
             <ResultCard title="Vahvuudet" items={strengths} />
             <ResultCard title="Täydennettävää" items={gaps} />
