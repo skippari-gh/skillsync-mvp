@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Briefcase, FileText, Sparkles, UserRound } from "lucide-react";
 
 type Candidate = {
@@ -57,7 +57,39 @@ export default function Home() {
   const [job, setJob] = useState<Job>(initialJob);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+
+  async function uploadCV(file: File) {
+    try {
+      setUploading(true);
+      setError("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload-cv", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+
+      setCandidate({
+        ...candidate,
+        experience: data.text,
+      });
+    } catch (error) {
+      console.error(error);
+      setError("CV:n lataus epäonnistui. Tarkista, että tiedosto on PDF.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function runMatch() {
     setLoading(true);
@@ -116,7 +148,7 @@ Vaatimukset: ${job.requirements}
                   AI-pohjainen rekrytointi ja työnhakijan matchaus
                 </h1>
                 <p className="text-base leading-8 text-slate-300 sm:text-lg">
-                  Syötä profiili ja työpaikkailmoitus. SkillSync arvioi
+                  Lataa CV tai täytä profiili käsin. SkillSync arvioi
                   sopivuuden, korostaa vahvuuksia ja tuottaa ammattimaisen
                   hakemusluonnoksen nopeasti.
                 </p>
@@ -150,6 +182,31 @@ Vaatimukset: ${job.requirements}
               <div className="mb-6 flex items-center gap-3 text-slate-100">
                 <UserRound className="h-5 w-5 text-cyan-300" />
                 <h2 className="text-2xl font-semibold">Työnhakijan profiili</h2>
+              </div>
+
+              <div className="mb-6 rounded-3xl border border-dashed border-cyan-400/40 bg-slate-950/70 p-5">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl px-6 py-5 text-center text-sm text-slate-300 transition hover:bg-slate-900">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadCV(file);
+                    }}
+                  />
+
+                  <span className="font-semibold text-cyan-200">
+                    {uploading
+                      ? "Ladataan CV:tä..."
+                      : "Lataa PDF-CV automaattista analyysiä varten"}
+                  </span>
+
+                  <span className="mt-2 text-xs leading-5 text-slate-500">
+                    Kun lataat CV:n, sen teksti tuodaan automaattisesti
+                    Kokemus-kenttään.
+                  </span>
+                </label>
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
@@ -186,7 +243,7 @@ Vaatimukset: ${job.requirements}
             <section className="rounded-[2rem] border border-cyan-500/10 bg-slate-950/80 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.25)]">
               <button
                 onClick={runMatch}
-                disabled={loading}
+                disabled={loading || uploading}
                 className="w-full rounded-3xl bg-gradient-to-r from-cyan-400 via-slate-100 to-cyan-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Analysoidaan..." : "Tee AI-matchaus"}
